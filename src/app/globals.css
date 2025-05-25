@@ -5,94 +5,96 @@
 
 @layer base {
   :root {
-    --background: 220 30% 97%; /* Very Light Cool Gray - Fallback, but gradient will override body */
-    --foreground: 220 20% 25%; /* Dark Slate Blue/Gray */
+    /* Serene Oceanic - Light Mode */
+    --background: 180 73% 94%; /* Lightest Aqua (#E4F9F9) */
+    --foreground: 207 70% 21%; /* Dark Navy (#0F3A5A) */
 
     --card: 0 0% 100%; /* White */
-    --card-foreground: 220 20% 25%; /* Dark Slate Blue/Gray on card */
+    --card-foreground: 207 70% 21%; /* Dark Navy */
 
     --popover: 0 0% 100%; /* White */
-    --popover-foreground: 220 20% 25%; /* Dark Slate Blue/Gray on popover */
+    --popover-foreground: 207 70% 21%; /* Dark Navy */
 
-    --primary: 210 90% 55%; /* Vibrant Blue */
+    --primary: 208 82% 42%; /* Strong Blue (#137DC5) */
     --primary-foreground: 210 20% 98%; /* Very Light Blue/White */
 
-    --secondary: 220 25% 90%; /* Light Cool Gray for secondary elements */
-    --secondary-foreground: 220 15% 35%; /* Medium Slate Blue/Gray for secondary text */
+    --secondary: 175 55% 77%; /* Light Teal (#A4E4E0) */
+    --secondary-foreground: 207 70% 25%; /* Slightly Lighter Dark Navy */
 
-    --muted: 220 25% 94%; /* Very Light Muted Cool Gray */
-    --muted-foreground: 220 10% 50%; /* Medium Gray for muted text */
+    --muted: 175 60% 90%; /* Lighter Light Teal */
+    --muted-foreground: 207 30% 50%; /* Mid-tone Desaturated Blue/Gray */
 
-    --accent: 170 80% 45%; /* Bright Teal/Cyan */
-    --accent-foreground: 170 20% 98%; /* Very Light Teal/White */
+    --accent: 183 59% 50%; /* Vibrant Teal (#37C2CA) */
+    --accent-foreground: 183 20% 98%; /* Very Light Teal/White */
 
     --destructive: 0 70% 55%; /* Red */
-    --destructive-foreground: 0 0% 98%; /* Default light text for destructive */
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 220 20% 88%; /* Light Gray Border */
-    --input: 220 20% 95%; /* Slightly Off-White Input */
-    --ring: 210 90% 60%; /* Slightly Lighter Primary Blue for Ring */
+    --border: 175 50% 70%; /* Desaturated Light Teal */
+    --input: 175 60% 96%; /* Very Light Teal (Almost White) */
+    --ring: 208 82% 50%; /* Brighter Primary Blue */
 
-    --chart-1: 210 80% 60%; /* Blue shade */
-    --chart-2: 170 70% 50%;  /* Teal/Cyan shade */
-    --chart-3: 280 70% 60%; /* Purple shade */
-    --chart-4: 40 80% 60%; /* Yellow/Orange shade */
-    --chart-5: 0 70% 65%; /* Reddish/Pink shade */
+    --chart-1: 208 82% 42%; /* Primary Blue */
+    --chart-2: 183 59% 50%;  /* Accent Teal */
+    --chart-3: 175 55% 77%; /* Light Teal */
+    --chart-4: 200 60% 55%; /* Mid Blue */
+    --chart-5: 190 50% 65%; /* Lighter Desaturated Teal/Blue */
     --radius: 0.5rem;
 
-    --sidebar-background: 220 30% 98%;
-    --sidebar-foreground: 220 20% 25%;
-    --sidebar-primary: 210 85% 50%; 
+    --sidebar-background: 180 70% 97%; /* Very Light Aqua */
+    --sidebar-foreground: 207 70% 21%; /* Dark Navy */
+    --sidebar-primary: 208 82% 42%; 
     --sidebar-primary-foreground: 210 20% 98%;
-    --sidebar-accent: 220 25% 92%;
-    --sidebar-accent-foreground: 210 90% 55%;
-    --sidebar-border: 220 20% 90%;
-    --sidebar-ring: 210 90% 60%;
+    --sidebar-accent: 180 70% 92%; /* Active/Hover Sidebar Item Background */
+    --sidebar-accent-foreground: 208 82% 42%; /* Primary color for text on active/hover */
+    --sidebar-border: 175 50% 85%;
+    --sidebar-ring: 208 82% 50%;
   }
 
   .dark {
-    --background: 220 30% 10%; /* Very Dark Desaturated Blue - Fallback */
-    --foreground: 220 20% 92%; /* Light Off-White/Gray */
+    /* Serene Oceanic - Dark Mode */
+    --background: 207 70% 15%; /* Darker Navy (#0A2E46 approx) */
+    --foreground: 180 60% 90%; /* Off-White Aqua */
 
-    --card: 220 30% 15%; /* Darker Background Shade for card */
-    --card-foreground: 220 20% 92%;
+    --card: 207 65% 20%; /* Dark Blue Hue (#0D3855 approx) */
+    --card-foreground: 180 60% 90%;
 
-    --popover: 220 30% 12%; /* Even Darker popover */
-    --popover-foreground: 220 20% 92%;
+    --popover: 207 65% 18%; /* Even Darker Popover */
+    --popover-foreground: 180 60% 90%;
 
-    --primary: 210 85% 65%; /* Lighter Vibrant Blue for dark mode */
-    --primary-foreground: 220 30% 10%; /* Dark text on primary */
+    --primary: 208 80% 58%; /* Lighter Vibrant Blue */
+    --primary-foreground: 207 70% 15%; /* Dark text on Lighter Primary */
 
-    --secondary: 220 25% 20%; /* Dark Gray for secondary */
-    --secondary-foreground: 220 15% 80%; /* Lighter Gray for secondary text */
+    --secondary: 175 50% 30%; /* Dark Desaturated Teal */
+    --secondary-foreground: 175 55% 77%; /* Light Teal text */
 
-    --muted: 220 25% 22%; /* Slightly Lighter Dark Gray for muted */
-    --muted-foreground: 220 10% 60%; /* Medium Light Gray for muted text */
+    --muted: 207 60% 25%; /* Darker Muted Blue */
+    --muted-foreground: 180 40% 65%; /* Muted Aqua/Gray text */
 
-    --accent: 170 75% 55%; /* Lighter Bright Teal/Cyan for dark mode */
-    --accent-foreground: 220 30% 10%; /* Dark text on accent */
+    --accent: 183 60% 60%; /* Lighter Vibrant Teal */
+    --accent-foreground: 207 70% 15%; /* Dark text on Lighter Accent */
 
-    --destructive: 0 65% 60%; /* Lighter Red for dark mode */
+    --destructive: 0 65% 60%; /* Lighter Red */
     --destructive-foreground: 0 0% 98%;
 
-    --border: 220 20% 25%; /* Darker Border */
-    --input: 220 20% 18%; /* Dark Input Background */
-    --ring: 210 85% 70%; /* Lighter Primary Ring for dark mode */
+    --border: 207 50% 28%; /* Subtle Dark Border */
+    --input: 207 60% 22%; /* Dark Input Background */
+    --ring: 208 80% 65%; /* Lighter Primary Ring */
     
-    --chart-1: 210 75% 70%;
-    --chart-2: 170 65% 60%;
-    --chart-3: 280 65% 70%;
-    --chart-4: 40 75% 70%;
-    --chart-5: 0 65% 75%;
+    --chart-1: 208 80% 58%;
+    --chart-2: 183 60% 60%;
+    --chart-3: 175 60% 80%;
+    --chart-4: 200 65% 65%;
+    --chart-5: 190 55% 70%;
 
-    --sidebar-background: 220 30% 8%;
-    --sidebar-foreground: 220 20% 92%;
-    --sidebar-primary: 210 80% 60%;
-    --sidebar-primary-foreground: 220 30% 15%;
-    --sidebar-accent: 220 25% 18%;
-    --sidebar-accent-foreground: 210 85% 65%;
-    --sidebar-border: 220 20% 20%;
-    --sidebar-ring: 210 85% 70%;
+    --sidebar-background: 207 70% 12%; /* Very Dark Navy */
+    --sidebar-foreground: 180 60% 90%;
+    --sidebar-primary: 208 80% 58%;
+    --sidebar-primary-foreground: 207 70% 15%;
+    --sidebar-accent: 207 65% 22%; /* Active/Hover Sidebar Item Background */
+    --sidebar-accent-foreground: 208 80% 58%; /* Primary color for text on active/hover */
+    --sidebar-border: 207 50% 22%;
+    --sidebar-ring: 208 80% 65%;
   }
 }
 
@@ -104,17 +106,17 @@
     @apply text-foreground;
     @apply antialiased; /* Ensure text is smooth */
     
-    /* Modern Animated Gradient Background */
-    background: linear-gradient(-45deg, hsl(var(--primary)/0.6), hsl(var(--accent)/0.5), hsl(var(--secondary)/0.6), hsl(var(--primary)/0.4));
+    /* Modern Animated Gradient Background - More Subtle */
+    background: linear-gradient(-45deg, hsl(var(--primary)/0.2), hsl(var(--accent)/0.15), hsl(var(--background)/0.8), hsl(var(--secondary)/0.2));
     background-size: 400% 400%;
-    animation: gradientBG 25s ease infinite;
+    animation: gradientBG 30s ease infinite; /* Slower animation */
     min-height: 100vh; /* Ensure gradient covers full viewport height */
   }
 
   .dark body {
-    background: linear-gradient(-45deg, hsl(var(--primary)/0.4), hsl(var(--accent)/0.3), hsl(var(--background)/0.8), hsl(var(--secondary)/0.4));
+    background: linear-gradient(-45deg, hsl(var(--primary)/0.15), hsl(var(--accent)/0.1), hsl(var(--background)/0.9), hsl(var(--secondary)/0.15));
     background-size: 400% 400%;
-    animation: gradientBG 25s ease infinite;
+    animation: gradientBG 30s ease infinite; /* Slower animation */
   }
 
   @keyframes gradientBG {
@@ -142,12 +144,12 @@
     height: 8px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-muted/50 rounded-full;
+    @apply bg-muted/30 rounded-full; /* Softer track */
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-primary/70 rounded-full;
+    @apply bg-primary/60 rounded-full; /* Softer thumb */
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    @apply bg-primary;
+    @apply bg-primary/80; /* Slightly more prominent on hover */
   }
 }
