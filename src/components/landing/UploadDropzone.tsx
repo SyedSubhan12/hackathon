@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { UploadCloud, FileText, Image as ImageIcon, XCircle, Loader2 } from 'lucide-react';
+import { UploadCloud, FileText, Image as ImageIcon, XCircle, Loader2, CheckCircle } from 'lucide-react';
 import { uploadReportAction } from '@/app/actions/reportActions';
 import type { FullReportDataFromBackend } from '@/types/report';
 
@@ -18,9 +18,10 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 export default function UploadDropzone() {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0); // Keep for visual feedback
+  const [uploadProgress, setUploadProgress] = useState(0); 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -54,9 +55,10 @@ export default function UploadDropzone() {
 
   const validateAndSetFile = (selectedFile: File) => {
     setError(null);
+    setIsSuccess(false);
     const extension = selectedFile.name.split('.').pop()?.toLowerCase();
     if (!extension || !ALLOWED_EXTENSIONS.includes(extension)) {
-      setError(`Invalid file type. Allowed types: ${ALLOWED_EXTENSIONS.join(', ')}.`);
+      setError(`Invalid file type. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}.`);
       setFile(null);
       return;
     }
@@ -72,6 +74,7 @@ export default function UploadDropzone() {
     setFile(null);
     setError(null);
     setUploadProgress(0);
+    setIsSuccess(false);
   };
 
   const handleSubmit = async () => {
@@ -83,6 +86,7 @@ export default function UploadDropzone() {
     setIsLoading(true);
     setUploadProgress(0); 
     setError(null);
+    setIsSuccess(false);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -91,26 +95,27 @@ export default function UploadDropzone() {
     let currentProgress = 0;
     const progressInterval = setInterval(() => {
       currentProgress += 10;
-      if (currentProgress <= 90) {
+      if (currentProgress <= 90) { // Only simulate up to 90%
         setUploadProgress(currentProgress);
       } else {
-        clearInterval(progressInterval);
+        clearInterval(progressInterval); // Stop simulation, backend call takes over
       }
-    }, 200);
+    }, 150);
 
     try {
       const result = await uploadReportAction(formData);
-      clearInterval(progressInterval);
+      clearInterval(progressInterval); // Clear interval on response
 
       if (result.success && result.data) {
         setUploadProgress(100);
+        setIsSuccess(true);
         toast({
-          title: "Processing Successful",
-          description: `${result.data.filename} has been processed.`,
+          title: "Processing Successful!",
+          description: `${result.data.filename} is ready to view.`,
+          variant: 'default', // Explicitly set default for success
+          className: 'bg-green-500 border-green-600 text-white', // Custom success styling
         });
-        // Store data in localStorage to pass to the report page
         localStorage.setItem('labReportData', JSON.stringify(result.data));
-        // Navigate to a generic report display page. The filename can make the URL descriptive.
         router.push(`/report/${encodeURIComponent(result.data.filename)}`);
       } else {
         setError(result.error || "An unknown error occurred during processing.");
@@ -137,22 +142,24 @@ export default function UploadDropzone() {
   };
   
   const getFileIcon = () => {
-    if (!file) return <UploadCloud size={48} className="text-gray-400" />;
+    if (!file) return <UploadCloud size={56} className="text-muted-foreground/70" />;
     const extension = file.name.split('.').pop()?.toLowerCase();
-    if (extension === 'pdf') return <FileText size={48} className="text-red-500" />;
-    if (['png', 'jpg', 'jpeg', 'bmp', 'tiff'].includes(extension || '')) return <ImageIcon size={48} className="text-blue-500" />;
-    return <UploadCloud size={48} className="text-gray-400" />;
+    if (extension === 'pdf') return <FileText size={56} className="text-red-500" />;
+    if (['png', 'jpg', 'jpeg', 'bmp', 'tiff'].includes(extension || '')) return <ImageIcon size={56} className="text-blue-500" />;
+    return <UploadCloud size={56} className="text-muted-foreground/70" />;
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-6 space-y-6">
+    <div className="w-full max-w-2xl mx-auto p-4 md:p-6 space-y-6">
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
-        className={`relative flex flex-col items-center justify-center w-full h-64 border-2 border-dashed rounded-lg cursor-pointer transition-colors
-                    ${isDragging ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/70'}
-                    ${error ? 'border-destructive' : ''}`}
+        className={`relative flex flex-col items-center justify-center w-full h-72 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300 ease-in-out
+                    ${isDragging ? 'border-primary bg-primary/10 scale-105' : 'border-border hover:border-primary/70 bg-card hover:bg-muted/50'}
+                    ${error ? 'border-destructive bg-destructive/5' : ''}
+                    ${isSuccess ? 'border-green-500 bg-green-500/5' : ''}
+                    shadow-sm hover:shadow-md`}
       >
         <Input
           id="dropzone-file"
@@ -162,66 +169,68 @@ export default function UploadDropzone() {
           accept={ALLOWED_EXTENSIONS.map(ext => `.${ext}`).join(',')}
           disabled={isLoading}
         />
-        {!file && (
-          <div className="text-center pointer-events-none">
-            <UploadCloud size={48} className={`mx-auto mb-3 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
-            <p className={`mb-2 text-sm font-semibold ${isDragging ? 'text-primary' : 'text-foreground'}`}>
-              Drag & drop files here or <span className="text-accent">click to browse</span>
+        {!file && !isLoading && (
+          <div className="text-center pointer-events-none p-4">
+            <UploadCloud size={56} className={`mx-auto mb-4 ${isDragging ? 'text-primary animate-bounce' : 'text-muted-foreground/70'}`} />
+            <p className={`mb-2 text-base font-semibold ${isDragging ? 'text-primary' : 'text-foreground'}`}>
+              Drag & drop files here or <span className="text-accent font-bold">click to browse</span>
             </p>
             <p className="text-xs text-muted-foreground">
-              Supported formats: PDF, PNG, JPG, JPEG, TIFF, BMP (Max {MAX_FILE_SIZE_MB}MB)
+              Supported: PDF, PNG, JPG, TIFF, BMP (Max {MAX_FILE_SIZE_MB}MB)
             </p>
           </div>
         )}
         {file && !isLoading && (
-          <div className="text-center pointer-events-none p-4">
-            {getFileIcon()}
+          <div className="text-center pointer-events-none p-4 flex flex-col items-center">
+            {isSuccess ? <CheckCircle size={56} className="text-green-500 mb-3" /> : getFileIcon()}
             <p className="mt-2 text-sm font-medium text-foreground truncate max-w-xs">{file.name}</p>
             <p className="text-xs text-muted-foreground">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-2 text-destructive hover:bg-destructive/10 pointer-events-auto"
-              onClick={(e) => { e.stopPropagation(); removeFile(); }}
-              aria-label="Remove file"
-            >
-              <XCircle size={16} className="mr-1" /> Remove
-            </Button>
+            {!isSuccess && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-3 text-destructive hover:bg-destructive/10 pointer-events-auto rounded-md"
+                onClick={(e) => { e.stopPropagation(); removeFile(); }}
+                aria-label="Remove file"
+              >
+                <XCircle size={16} className="mr-1" /> Remove File
+              </Button>
+            )}
+             {isSuccess && (
+              <p className="mt-2 text-sm font-medium text-green-600">Upload successful!</p>
+            )}
           </div>
         )}
          {isLoading && (
           <div className="text-center p-4">
-            <Loader2 size={48} className="mx-auto mb-3 text-primary animate-spin" />
-            <p className="text-sm font-medium text-primary">Processing {file?.name}...</p>
+            <Loader2 size={56} className="mx-auto mb-4 text-primary animate-spin" />
+            <p className="text-sm font-medium text-primary">Analyzing {file?.name}...</p>
             <p className="text-xs text-muted-foreground">This may take a moment.</p>
           </div>
         )}
       </div>
 
-      {error && <p className="text-sm text-destructive text-center">{error}</p>}
+      {error && <p className="text-sm text-destructive text-center font-medium py-2 px-3 bg-destructive/10 rounded-md">{error}</p>}
 
-      {uploadProgress > 0 && !isLoading && uploadProgress < 100 && ( // Show progress only during active upload if needed, or rely on isLoading
-        <div className="space-y-1">
-          <Progress value={uploadProgress} className="w-full h-2" />
+      {uploadProgress > 0 && uploadProgress < 100 && (
+        <div className="space-y-1 pt-2">
+          <Progress value={uploadProgress} className="w-full h-2 [&>div]:bg-primary" />
           <p className="text-xs text-muted-foreground text-center">{uploadProgress}% processed</p>
         </div>
       )}
-      {uploadProgress === 100 && !isLoading && (
-         <div className="space-y-1">
-          <Progress value={100} className="w-full h-2" />
-          <p className="text-xs text-muted-foreground text-center">Processing complete.</p>
-        </div>
-      )}
-
-
+      
       <Button
         onClick={handleSubmit}
-        disabled={!file || isLoading}
-        className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg py-6 shadow-md"
+        disabled={!file || isLoading || isSuccess}
+        className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-lg py-6 shadow-lg hover:shadow-xl transition-all transform hover:scale-105 rounded-lg disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
       >
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing Report...
+          </>
+        ) : isSuccess ? (
+           <>
+            <CheckCircle className="mr-2 h-5 w-5" /> Processed! Redirecting...
           </>
         ) : (
           <>

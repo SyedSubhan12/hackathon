@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google'; // Using Inter as a common sans-serif font
+import { Inter } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -7,7 +7,7 @@ import { Toaster } from '@/components/ui/toaster';
 
 const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-sans', // Changed from geist to a more common sans font variable
+  variable: '--font-sans',
 });
 
 
@@ -22,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased flex flex-col min-h-screen bg-background text-foreground`}>
+    <html lang="en" className="custom-scrollbar"> {/* Apply custom scrollbar to html */}
+      <body className={`${inter.variable} font-sans flex flex-col min-h-screen bg-background text-foreground`}>
         <Header />
         <main className="flex-grow container mx-auto px-4 py-8">
           {children}
