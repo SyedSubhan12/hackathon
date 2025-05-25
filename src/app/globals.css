@@ -5,7 +5,7 @@
 
 @layer base {
   :root {
-    --background: 220 30% 97%; /* Very Light Cool Gray */
+    --background: 220 30% 97%; /* Very Light Cool Gray - Fallback, but gradient will override body */
     --foreground: 220 20% 25%; /* Dark Slate Blue/Gray */
 
     --card: 0 0% 100%; /* White */
@@ -51,7 +51,7 @@
   }
 
   .dark {
-    --background: 220 30% 10%; /* Very Dark Desaturated Blue */
+    --background: 220 30% 10%; /* Very Dark Desaturated Blue - Fallback */
     --foreground: 220 20% 92%; /* Light Off-White/Gray */
 
     --card: 220 30% 15%; /* Darker Background Shade for card */
@@ -101,9 +101,34 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
     @apply antialiased; /* Ensure text is smooth */
+    
+    /* Modern Animated Gradient Background */
+    background: linear-gradient(-45deg, hsl(var(--primary)/0.6), hsl(var(--accent)/0.5), hsl(var(--secondary)/0.6), hsl(var(--primary)/0.4));
+    background-size: 400% 400%;
+    animation: gradientBG 25s ease infinite;
+    min-height: 100vh; /* Ensure gradient covers full viewport height */
   }
+
+  .dark body {
+    background: linear-gradient(-45deg, hsl(var(--primary)/0.4), hsl(var(--accent)/0.3), hsl(var(--background)/0.8), hsl(var(--secondary)/0.4));
+    background-size: 400% 400%;
+    animation: gradientBG 25s ease infinite;
+  }
+
+  @keyframes gradientBG {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
   /* Add some global focus styling for better accessibility */
   *:focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
