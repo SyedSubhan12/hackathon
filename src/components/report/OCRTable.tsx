@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge';
+import { Badge } from "@/components/ui/badge";
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, MinusCircle, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
 import { motion } from 'framer-motion';
