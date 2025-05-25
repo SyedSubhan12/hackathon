@@ -1,4 +1,6 @@
 // src/components/report/OCRTable.tsx
+"use client";
+
 import type { LabResultItem } from '@/types/report'; 
 import {
   Table,
@@ -10,7 +12,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { TrendingUp, TrendingDown, MinusCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, MinusCircle, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
+import { motion } from 'framer-motion';
 
 interface OCRTableProps {
   labResults: LabResultItem[];
@@ -28,16 +31,31 @@ export default function OCRTable({ labResults }: OCRTableProps) {
       return { variant: "destructive", Icon: TrendingUp, textClass: "text-destructive font-semibold" };
     }
     if (lowerFlag.includes('low')) {
-      return { variant: "destructive", Icon: TrendingDown, textClass: "text-destructive font-semibold" }; // Often Low is also a concern
+      // Low can also be concerning, using destructive variant
+      return { variant: "destructive", Icon: TrendingDown, textClass: "text-destructive font-semibold" };
     }
      if (lowerFlag.includes('abnormal')) {
       return { variant: "destructive", Icon: AlertTriangle, textClass: "text-destructive font-semibold" };
     }
     if (lowerFlag.includes('normal')) {
-      return { variant: "default", textClass: "text-green-600 dark:text-green-500" }; // Using primary for normal might be too much, green is good
+      return { variant: "default", textClass: "text-green-600 dark:text-green-500" };
     }
+    // Fallback for unknown flags
     return { variant: "outline", Icon: MinusCircle, textClass: "text-muted-foreground" };
   }
+
+  const rowVariants = {
+    hidden: { opacity: 0, x: -20 },
+    visible: (i: number) => ({
+      opacity: 1,
+      x: 0,
+      transition: {
+        delay: i * 0.05, // Stagger animation for each row
+        duration: 0.3,
+        ease: "easeOut"
+      },
+    }),
+  };
 
   return (
     <div className="overflow-x-auto rounded-lg border shadow-sm">
@@ -55,11 +73,15 @@ export default function OCRTable({ labResults }: OCRTableProps) {
           {labResults.map((item, index) => {
             const flagDetails = getFlagDetails(item.flag);
             return (
-              <TableRow 
-                key={index} 
+              <motion.tr
+                key={index}
+                custom={index}
+                variants={rowVariants}
+                initial="hidden"
+                animate="visible"
                 className={cn(
                   "hover:bg-muted/30 transition-colors",
-                  (item.flag && (item.flag.toLowerCase() !== 'normal' && item.flag.toLowerCase() !== '')) ? 'bg-destructive/5 hover:bg-destructive/10' : ''
+                  (item.flag && (item.flag.toLowerCase() !== 'normal' && item.flag.toLowerCase() !== '')) ? 'bg-destructive/5 hover:bg-destructive/10 dark:bg-destructive/10 dark:hover:bg-destructive/20' : ''
                 )}
               >
                 <TableCell className="font-medium text-foreground py-3 px-4 text-sm">{item.test_name || 'N/A'}</TableCell>
@@ -85,7 +107,7 @@ export default function OCRTable({ labResults }: OCRTableProps) {
                     <span className="text-xs text-muted-foreground">-</span>
                   )}
                 </TableCell>
-              </TableRow>
+              </motion.tr>
             )}
           )}
         </TableBody>

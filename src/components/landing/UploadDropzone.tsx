@@ -1,7 +1,7 @@
 // src/components/landing/UploadDropzone.tsx
 "use client";
 
-import { useState, useCallback, ChangeEvent, useEffect } from 'react';
+import { useState, useCallback, ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,8 @@ import { uploadReportAction, fetchSampleFilesAction } from '@/app/actions/report
 import type { FullReportDataFromBackend } from '@/types/report';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from '../ui/separator';
+import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 
 const ALLOWED_EXTENSIONS = ["pdf", "png", "jpg", "jpeg", "tiff", "bmp"];
 const MAX_FILE_SIZE_MB = 16; // Matching backend's MAX_CONTENT_LENGTH
@@ -26,8 +28,6 @@ interface SampleFile {
 export default function UploadDropzone() {
   const [file, setFile] = useState<File | null>(null);
   const [selectedSampleFile, setSelectedSampleFile] = useState<string | null>(null);
-  const [sampleFiles, setSampleFiles] = useState<SampleFile[]>([]);
-  const [isLoadingSamples, setIsLoadingSamples] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0); 
   const [isLoading, setIsLoading] = useState(false);
@@ -36,28 +36,27 @@ export default function UploadDropzone() {
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const getSampleFiles = async () => {
-      setIsLoadingSamples(true);
-      setError(null);
-      try {
-        const result = await fetchSampleFilesAction();
-        if (result.success && result.data) {
-          setSampleFiles(result.data);
-        } else {
-          // Not showing an error toast here to avoid being too noisy on page load if samples fail
-          console.warn("Failed to load sample files:", result.error);
-          setSampleFiles([]); // Ensure it's an empty array on failure
-        }
-      } catch (err) {
-        console.error("Error fetching sample files:", err);
-        setSampleFiles([]);
-      } finally {
-        setIsLoadingSamples(false);
+  const { 
+    data: sampleFilesData, 
+    isLoading: isLoadingSamples, 
+    isError: isSampleFilesError,
+    error: sampleFilesErrorData,
+  } = useQuery<{ success: boolean; data?: SampleFile[]; error?: string }, Error, SampleFile[] | undefined>({
+    queryKey: ['sampleFiles'],
+    queryFn: async () => {
+      const result = await fetchSampleFilesAction();
+      if (!result.success) {
+        // Throw an error to be caught by React Query's error handling
+        throw new Error(result.error || "Failed to fetch sample files");
       }
-    };
-    getSampleFiles();
-  }, []);
+      return result.data;
+    },
+    select: (data) => data, // data here is SampleFile[] | undefined
+    staleTime: 1000 * 60 * 10, // Cache for 10 minutes
+  });
+
+  const sampleFiles: SampleFile[] = sampleFilesData || [];
+
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -78,7 +77,7 @@ export default function UploadDropzone() {
   const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
-    if (!selectedSampleFile) { // Only allow drag if no sample is selected
+    if (!selectedSampleFile) { 
       setIsDragging(true);
     }
   }, [selectedSampleFile]);
@@ -92,7 +91,7 @@ export default function UploadDropzone() {
   const validateAndSetFile = (selectedFile: File) => {
     setError(null);
     setIsSuccess(false);
-    setSelectedSampleFile(null); // Clear sample selection if a file is uploaded
+    setSelectedSampleFile(null); 
     const extension = selectedFile.name.split('.').pop()?.toLowerCase();
     if (!extension || !ALLOWED_EXTENSIONS.includes(extension)) {
       setError(`Invalid file type. Allowed: ${ALLOWED_EXTENSIONS.join(', ')}.`);
@@ -109,7 +108,7 @@ export default function UploadDropzone() {
 
   const removeFile = () => {
     setFile(null);
-    setSelectedSampleFile(null); // Also clear sample file
+    setSelectedSampleFile(null); 
     setError(null);
     setUploadProgress(0);
     setIsSuccess(false);
@@ -121,7 +120,7 @@ export default function UploadDropzone() {
         setError(null);
     } else {
         setSelectedSampleFile(filename);
-        setFile(null); // Clear direct file upload if a sample is chosen
+        setFile(null); 
         setError(null);
         setIsSuccess(false);
     }
@@ -148,13 +147,11 @@ export default function UploadDropzone() {
       actionInput = selectedSampleFile;
       isSampleUpload = true;
     } else {
-      // This case should ideally not be reached due to the initial check
       setError("No file or sample selected.");
       setIsLoading(false);
       return;
     }
 
-    // Simulate progress for a better UX, especially for larger files or slower connections
     let currentProgress = 0;
     const progressInterval = setInterval(() => {
       currentProgress += 10;
@@ -187,7 +184,7 @@ export default function UploadDropzone() {
           description: result.error || "Could not process the report.",
           variant: "destructive",
         });
-        setUploadProgress(0); // Reset progress on error
+        setUploadProgress(0); 
       }
     } catch (err) {
       clearInterval(progressInterval);
@@ -198,7 +195,7 @@ export default function UploadDropzone() {
         description: errorMessage,
         variant: "destructive",
       });
-      setUploadProgress(0); // Reset progress on error
+      setUploadProgress(0); 
     } finally {
       setIsLoading(false);
     }
@@ -212,7 +209,7 @@ export default function UploadDropzone() {
     } else if (selectedSampleFile) {
         const sample = sampleFiles.find(sf => sf.filename === selectedSampleFile);
         if (sample) {
-            currentFileDisplay = { name: sample.filename, type: `image/${sample.extension.replace('.', '')}`, size: sample.size }; // Guessing MIME type
+            currentFileDisplay = { name: sample.filename, type: `image/${sample.extension.replace('.', '')}`, size: sample.size };
         }
     }
 
@@ -221,7 +218,7 @@ export default function UploadDropzone() {
     const extension = currentFileDisplay.name.split('.').pop()?.toLowerCase();
     if (extension === 'pdf') return <FileText size={56} className="text-red-500" />;
     if (['png', 'jpg', 'jpeg', 'bmp', 'tiff'].includes(extension || '')) return <ImageIcon size={56} className="text-blue-500" />;
-    return <FileQuestion size={56} className="text-muted-foreground/70" />; // Fallback for samples if type unknown
+    return <FileQuestion size={56} className="text-muted-foreground/70" />;
   };
 
   const currentFileName = file ? file.name : selectedSampleFile;
@@ -235,8 +232,12 @@ export default function UploadDropzone() {
 
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-4 md:p-6 space-y-6">
-      {/* File Upload Dropzone */}
+    <motion.div 
+      className="w-full max-w-2xl mx-auto p-4 md:p-6 space-y-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
       <div
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -299,7 +300,6 @@ export default function UploadDropzone() {
         )}
       </div>
 
-      {/* Sample File Selector */}
       {sampleFiles.length > 0 && (
         <>
           <div className="flex items-center my-4">
@@ -317,6 +317,8 @@ export default function UploadDropzone() {
                     <Loader2 size={16} className="animate-spin" />
                     <span>Loading samples...</span>
                 </div>
+            ) : isSampleFilesError ? (
+              <p className="text-sm text-destructive">Error loading samples: {sampleFilesErrorData?.message || "Unknown error"}</p>
             ) : (
               <Select
                 value={selectedSampleFile || "none"}
@@ -372,6 +374,6 @@ export default function UploadDropzone() {
           </>
         )}
       </Button>
-    </div>
+    </motion.div>
   );
 }

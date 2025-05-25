@@ -1,4 +1,4 @@
-
+// src/app/report/[id]/page.tsx
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -13,15 +13,14 @@ import { AlertTriangle, FileQuestion, Info, Home } from 'lucide-react';
 import Image from 'next/image';
 import type { FullReportDataFromBackend, BackendLabResultItem, LabResultItem, AiAnalysis, ProcessingInfo } from '@/types/report';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
+import { motion } from 'framer-motion'; // Import motion
 
 // Helper function to map backend data to frontend LabResultItem
 const mapBackendResultsToFrontend = (backendResults: BackendLabResultItem[]): LabResultItem[] => {
-  if (!Array.isArray(backendResults)) return []; // Ensure backendResults is an array
+  if (!Array.isArray(backendResults)) return [];
   return backendResults.map(item => {
-    let flag: LabResultItem['flag'] = 'Normal'; // Default to Normal
+    let flag: LabResultItem['flag'] = 'Normal'; 
     
-    // Ensure value, low, high are numbers before comparison
     const numericValue = typeof item.value === 'string' ? parseFloat(item.value) : item.value;
     const numericLow = typeof item.low === 'string' ? parseFloat(item.low) : item.low;
     const numericHigh = typeof item.high === 'string' ? parseFloat(item.high) : item.high;
@@ -31,8 +30,8 @@ const mapBackendResultsToFrontend = (backendResults: BackendLabResultItem[]): La
     } else if (typeof numericValue === 'number' && typeof numericHigh === 'number' && numericValue > numericHigh) {
       flag = 'High';
     }
-    // If backend provided a more specific flag, we could use that here.
-    // For now, deriving based on numeric low/high comparison.
+    // Additional flag logic based on Python backend's 'abnormal_results' might be needed if more precise flags are desired.
+    // For example, if backend's `ai_analysis.abnormal_results` contains `item.test`, mark as 'Abnormal'.
 
     return {
       test_name: item.test || 'N/A',
@@ -44,6 +43,14 @@ const mapBackendResultsToFrontend = (backendResults: BackendLabResultItem[]): La
   });
 };
 
+const sectionVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" }
+  },
+};
 
 export default function ReportPage() {
   const params = useParams();
@@ -61,15 +68,14 @@ export default function ReportPage() {
     if (storedDataString) {
       try {
         const data: FullReportDataFromBackend = JSON.parse(storedDataString);
-        // Ensure the filename from storage matches the one in the URL (decoded)
         if (data.filename && decodeURIComponent(idFromUrl) === data.filename) {
           setReportData(data);
-          setFrontendLabResults(mapBackendResultsToFrontend(data.structured_data || [])); // Ensure structured_data is an array
+          setFrontendLabResults(mapBackendResultsToFrontend(data.structured_data || []));
           setProcessedDate(data.processing_info?.timestamp || new Date().toISOString()); 
         } else {
           setError("Report data mismatch or invalid. Please try uploading again.");
         }
-        // Optional: Clear localStorage after loading if it's a one-time transfer
+        // Optional: Clear localStorage after loading if desired for one-time transfer
         // localStorage.removeItem('labReportData'); 
       } catch (e) {
         console.error("Error parsing report data from localStorage:", e);
@@ -87,7 +93,12 @@ export default function ReportPage() {
 
   if (error || !reportData) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+      <motion.div 
+        className="flex flex-col items-center justify-center min-h-[60vh] text-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
         <Alert variant="destructive" className="max-w-md mx-auto shadow-lg">
           <AlertTriangle className="h-5 w-5" />
           <AlertTitle className="text-xl font-semibold">Error Loading Report</AlertTitle>
@@ -100,7 +111,7 @@ export default function ReportPage() {
         <Button onClick={() => router.push('/')} className="mt-6 bg-primary hover:bg-primary/90 text-primary-foreground">
           <Home className="mr-2 h-4 w-4" /> Go to Homepage
         </Button>
-      </div>
+      </motion.div>
     );
   }
   
@@ -109,14 +120,19 @@ export default function ReportPage() {
 
   return (
     <div className="space-y-10">
-      <ReportHeader 
-        filename={reportData.filename} 
-        processedDate={processedDate}
-        reportId={displayReportId} 
-        processingInfo={reportData.processing_info}
-      />
+      <motion.div variants={sectionVariants} initial="hidden" animate="visible">
+        <ReportHeader 
+          filename={reportData.filename} 
+          processedDate={processedDate}
+          reportId={displayReportId} 
+          processingInfo={reportData.processing_info}
+        />
+      </motion.div>
       
-       <div className="bg-card p-6 rounded-xl shadow-xl">
+       <motion.div 
+         className="bg-card p-6 rounded-xl shadow-xl"
+         variants={sectionVariants} initial="hidden" animate="visible" transition={{ delay: 0.1 }}
+       >
          <h2 className="text-2xl font-semibold text-primary mb-6 border-b pb-3">Extracted Lab Results</h2>
          {frontendLabResults.length > 0 ? (
             <OCRTable labResults={frontendLabResults} />
@@ -130,34 +146,46 @@ export default function ReportPage() {
               </AlertDescription>
             </Alert>
          )}
-       </div>
+       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 bg-card p-6 rounded-xl shadow-xl">
+        <motion.div 
+          className="lg:col-span-2 bg-card p-6 rounded-xl shadow-xl"
+          variants={sectionVariants} initial="hidden" animate="visible" transition={{ delay: 0.2 }}
+        >
           <h2 className="text-2xl font-semibold text-primary mb-6 border-b pb-3">AI-Powered Analysis</h2>
           <ExplanationSection explanation={reportData.ai_analysis.explanation} />
-        </div>
-        <div className="lg:col-span-1 space-y-8">
+        </motion.div>
+        <motion.div 
+          className="lg:col-span-1 space-y-8"
+          variants={sectionVariants} initial="hidden" animate="visible" transition={{ delay: 0.3 }}
+        >
           <RiskSummaryDisplay aiAnalysisData={reportData.ai_analysis} />
           {/* 
           <DownloadButton 
-            reportId={displayReportId} // Needs a real, persistent ID if re-enabled
+            reportId={displayReportId} 
             filename={reportData.filename} 
           /> 
           */}
-        </div>
+        </motion.div>
       </div>
 
        {reportData.raw_text_preview && (
-        <div className="bg-card p-6 rounded-xl shadow-xl mt-10">
+        <motion.div 
+          className="bg-card p-6 rounded-xl shadow-xl mt-10"
+          variants={sectionVariants} initial="hidden" animate="visible" transition={{ delay: 0.4 }}
+        >
             <h3 className="text-xl font-semibold text-primary mb-4 border-b pb-2">Raw Text Preview (First 500 chars)</h3>
             <pre className="whitespace-pre-wrap text-sm text-muted-foreground bg-muted/30 p-4 rounded-lg max-h-72 overflow-y-auto custom-scrollbar">
               {reportData.raw_text_preview}
             </pre>
-        </div>
+        </motion.div>
        )}
        
-       <div className="bg-card p-6 rounded-xl shadow-xl mt-10">
+       <motion.div 
+         className="bg-card p-6 rounded-xl shadow-xl mt-10"
+         variants={sectionVariants} initial="hidden" animate="visible" transition={{ delay: 0.5 }}
+       >
           <h3 className="text-xl font-semibold text-primary mb-4 border-b pb-2">Original Report Snippet (Placeholder)</h3>
           <div className="flex justify-center items-center bg-muted/30 rounded-lg p-4 border border-dashed">
             <Image 
@@ -170,12 +198,15 @@ export default function ReportPage() {
             />
           </div>
           <p className="text-xs text-muted-foreground mt-3 text-center">This is a placeholder image representing the original uploaded document. A future feature could display the actual document or a thumbnail.</p>
-        </div>
-         <div className="text-center mt-12 mb-6">
+        </motion.div>
+         <motion.div 
+           className="text-center mt-12 mb-6"
+           variants={sectionVariants} initial="hidden" animate="visible" transition={{ delay: 0.6 }}
+         >
             <Button onClick={() => router.push('/')} variant="outline" className="border-primary text-primary hover:bg-primary/10 px-8 py-3 text-base">
              <Home className="mr-2 h-5 w-5" /> Analyze Another Report
             </Button>
-        </div>
+        </motion.div>
     </div>
   );
 }

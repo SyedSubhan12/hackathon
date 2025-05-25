@@ -4,6 +4,7 @@ import './globals.css';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Toaster } from '@/components/ui/toaster';
+import ReactQueryProvider from '@/components/providers/ReactQueryProvider'; // Import the provider
 
 const inter = Inter({
   subsets: ['latin'],
@@ -23,13 +24,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="custom-scrollbar">
+      {/* Removed whitespace here that was causing a hydration error */}
       <body className={`${inter.variable} font-sans flex flex-col min-h-screen bg-background text-foreground`}>
-        <Header />
-        <main className="flex-grow container mx-auto px-4 py-8">
-          {children}
-        </main>
-        <Footer />
-        <Toaster />
+        <ReactQueryProvider> {/* Wrap with QueryProvider */}
+          <Header />
+          <main className="flex-grow container mx-auto px-4 py-8">
+            {children}
+          </main>
+          <Footer />
+          <Toaster />
+        </ReactQueryProvider>
       </body>
     </html>
   );
