@@ -22,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="custom-scrollbar"> {/* Apply custom scrollbar to html */}
+    <html lang="en" className="custom-scrollbar">
       <body className={`${inter.variable} font-sans flex flex-col min-h-screen bg-background text-foreground`}>
         <Header />
         <main className="flex-grow container mx-auto px-4 py-8">

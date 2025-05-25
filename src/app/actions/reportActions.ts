@@ -1,3 +1,4 @@
+
 // src/app/actions/reportActions.ts
 "use server";
 
@@ -79,14 +80,19 @@ interface FetchSamplesResult {
 }
 
 export async function fetchSampleFilesAction(): Promise<FetchSamplesResult> {
+  const endpoint = `${PYTHON_BACKEND_BASE_URL}/sample_files`;
+  console.log(`Fetching sample files from: ${endpoint}`);
   try {
-    const response = await fetch(`${PYTHON_BACKEND_BASE_URL}/sample_files`);
+    const response = await fetch(endpoint);
     if (!response.ok) {
       let errorBody;
+      const errorStatusText = `API Error: ${response.status} ${response.statusText}`;
       try {
         errorBody = await response.json();
+        console.error(`API Error fetching samples (${response.status}):`, errorBody);
       } catch (e) {
-        return { success: false, error: `API Error: ${response.status} ${response.statusText}` };
+        console.error(`${errorStatusText}. Failed to parse error body as JSON. Response text: ${await response.text().catch(() => 'Could not read response text.')}`);
+        return { success: false, error: errorStatusText };
       }
       return { success: false, error: errorBody.error || `API Error fetching samples: ${response.status}` };
     }
@@ -94,10 +100,11 @@ export async function fetchSampleFilesAction(): Promise<FetchSamplesResult> {
     if (result.sample_files) {
       return { success: true, data: result.sample_files as SampleFile[] };
     } else {
+      console.warn('No sample files found or unexpected format from /sample_files:', result);
       return { success: false, error: result.error || "No sample files found or unexpected format."};
     }
   } catch (error) {
-    console.error('Fetch sample files error:', error);
+    console.error(`Fetch sample files action error for endpoint ${endpoint}:`, error); 
     if (error instanceof Error) {
       return { success: false, error: error.message };
     }
