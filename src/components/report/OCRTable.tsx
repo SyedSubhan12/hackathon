@@ -1,4 +1,5 @@
-import type { LabResultItem } from '@/app/report/[id]/page';
+// src/components/report/OCRTable.tsx
+import type { LabResultItem } from '@/types/report'; // Using the frontend-specific type
 import {
   Table,
   TableBody,
@@ -11,20 +12,22 @@ import { Badge } from "@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface OCRTableProps {
-  labResults: LabResultItem[];
+  labResults: LabResultItem[]; // Expects already mapped data
 }
 
 export default function OCRTable({ labResults }: OCRTableProps) {
   if (!labResults || labResults.length === 0) {
-    return <p className="text-muted-foreground">No lab results data found in this report.</p>;
+    return <p className="text-muted-foreground">No structured lab results data found or extracted from this report.</p>;
   }
 
-  const getBadgeVariant = (flag?: string): "default" | "secondary" | "destructive" | "outline" => {
+  const getBadgeVariant = (flag?: LabResultItem['flag']): "default" | "secondary" | "destructive" | "outline" => {
     if (!flag) return "secondary";
     const lowerFlag = flag.toLowerCase();
-    if (lowerFlag.includes('high') || lowerFlag.includes('abnormal') || lowerFlag.includes('positive')) return "destructive";
-    if (lowerFlag.includes('low')) return "destructive"; // Could be a different color like warning/blue
-    if (lowerFlag.includes('normal')) return "default"; // Greenish if available, using default for now
+    if (lowerFlag.includes('high') || lowerFlag.includes('abnormal') || lowerFlag.includes('positive') || lowerFlag.includes('low')) {
+      return "destructive";
+    }
+    // if (lowerFlag.includes('low')) return "warning"; // Example for a different 'low' style if needed
+    if (lowerFlag.includes('normal')) return "default"; 
     return "outline";
   }
 
@@ -43,7 +46,7 @@ export default function OCRTable({ labResults }: OCRTableProps) {
         <TableBody>
           {labResults.map((item, index) => (
             <TableRow key={index} className={cn(
-              item.flag && (item.flag.toLowerCase().includes('abnormal') || item.flag.toLowerCase().includes('high') || item.flag.toLowerCase().includes('low')) ? 'bg-destructive/5 hover:bg-destructive/10' : ''
+              item.flag && (item.flag.toLowerCase() !== 'normal') ? 'bg-destructive/5 hover:bg-destructive/10' : ''
             )}>
               <TableCell className="font-medium text-foreground py-3">{item.test_name || 'N/A'}</TableCell>
               <TableCell className="py-3">{item.value || 'N/A'}</TableCell>

@@ -1,132 +1,129 @@
-
+// src/components/report/RiskSummaryCard.tsx -> Renamed to RiskSummaryDisplay.tsx
 "use client";
 
-import type { LabResultItem } from '@/app/report/[id]/page';
+import type { AiAnalysis } from '@/types/report';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertTriangle, CheckCircle2, Info, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info, ListChecks } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
-import { generateRiskAssessment, GenerateRiskAssessmentOutput } from '@/ai/flows/generate-risk-assessment';
 import { Alert, AlertDescription } from '../ui/alert';
 
-interface RiskSummaryCardProps {
-  labResultsData: LabResultItem[];
-  // patientContext?: string; // Optional: if we want to pass more context later
+interface RiskSummaryDisplayProps {
+  aiAnalysisData?: AiAnalysis;
 }
 
-export default function RiskSummaryCard({ labResultsData }: RiskSummaryCardProps) {
-  const [assessment, setAssessment] = useState<GenerateRiskAssessmentOutput | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (labResultsData && labResultsData.length > 0) {
-      setIsLoading(true);
-      setError(null);
-      generateRiskAssessment({ labResults: labResultsData })
-        .then(setAssessment)
-        .catch(err => {
-          console.error("Error generating risk assessment:", err);
-          setError(err instanceof Error ? err.message : "Failed to load AI assessment.");
-        })
-        .finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
-      setAssessment(null); // No data to assess
-    }
-  }, [labResultsData]);
-
-  const getCardStyles = () => {
-    if (isLoading || !assessment || error) {
-      return "border-muted bg-card"; // Neutral style during load or if no assessment
-    }
-    switch (assessment.overallRiskLevel) {
-      case "High":
-        return "border-destructive/70 bg-destructive/10";
-      case "Moderate":
-        return "border-yellow-500/70 bg-yellow-500/10"; // Consider adding yellow to theme or use accent
-      case "Low":
-        return "border-blue-500/70 bg-blue-500/10"; // Consider using accent or another color
-      case "Normal":
-        return "border-green-500/70 bg-green-500/10";
-      default:
-        return "border-muted bg-card";
-    }
-  };
+export default function RiskSummaryDisplay({ aiAnalysisData }: RiskSummaryDisplayProps) {
   
-  const getRiskIcon = () => {
-    if (isLoading || !assessment || error) return <Info className="h-6 w-6 text-muted-foreground" />;
-    switch (assessment.overallRiskLevel) {
-      case "High":
-      case "Moderate":
-        return <AlertTriangle className={`h-6 w-6 ${assessment.overallRiskLevel === "High" ? "text-destructive" : "text-yellow-600"}`} />;
-      case "Low":
-      case "Normal":
-        return <CheckCircle2 className={`h-6 w-6 ${assessment.overallRiskLevel === "Normal" ? "text-green-600" : "text-blue-600"}`} />;
-      default:
-        return <Info className="h-6 w-6 text-muted-foreground" />;
-    }
-  };
+  if (!aiAnalysisData) {
+    return (
+      <Card className="shadow-lg border-muted bg-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-xl">
+            <Info className="h-6 w-6 text-muted-foreground" />
+            AI Risk Assessment
+          </CardTitle>
+          <CardDescription>Analysis not available.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">The AI-generated risk assessment could not be loaded.</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
-   const getRiskTitleColor = () => {
-    if (isLoading || !assessment || error) return "text-foreground";
-    switch (assessment.overallRiskLevel) {
-      case "High": return "text-destructive";
-      case "Moderate": return "text-yellow-700 dark:text-yellow-500";
-      case "Low": return "text-blue-700 dark:text-blue-500";
-      case "Normal": return "text-green-700 dark:text-green-500";
-      default: return "text-foreground";
-    }
-  };
+  const { summary, abnormal_results, total_tests, abnormal_count, model_used, error: aiError } = aiAnalysisData;
+
+  // Determine overall risk level text/icon based on abnormal_count or summary keywords.
+  // This is a simplified heuristic. The Python backend could provide a specific risk_level enum.
+  let riskLevelText = "Analysis";
+  let RiskIcon = Info;
+  let cardStyle = "border-muted bg-card";
+  let titleColor = "text-foreground";
+
+  if (abnormal_count > 0 && abnormal_count <= 2) { // Example heuristic
+    riskLevelText = `Low Concern (${abnormal_count} item${abnormal_count > 1 ? 's' : ''} flagged)`;
+    RiskIcon = AlertTriangle; // Could use a less severe icon
+    cardStyle = "border-yellow-500/70 bg-yellow-500/10";
+    titleColor = "text-yellow-700 dark:text-yellow-500";
+  } else if (abnormal_count > 2) {
+    riskLevelText = `Moderate/High Concern (${abnormal_count} items flagged)`;
+    RiskIcon = AlertTriangle;
+    cardStyle = "border-destructive/70 bg-destructive/10";
+    titleColor = "text-destructive";
+  } else if (abnormal_count === 0 && total_tests > 0) {
+    riskLevelText = "Normal Range";
+    RiskIcon = CheckCircle2;
+    cardStyle = "border-green-500/70 bg-green-500/10";
+    titleColor = "text-green-700 dark:text-green-500";
+  }
+
+
+  if (aiError) {
+     return (
+      <Card className={cn("shadow-lg", "border-destructive/70 bg-destructive/10")}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-xl text-destructive">
+            <AlertTriangle className="h-6 w-6" />
+            AI Analysis Issue
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+            <Alert variant="destructive" className="mb-2">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>AI Analysis Error</AlertTitle>
+                <AlertDescription>{aiAnalysisData.error || "The AI model encountered an issue."}</AlertDescription>
+            </Alert>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap mt-2">
+                {summary} {/* Display fallback summary if AI failed */}
+            </p>
+            <p className="mt-4 text-xs text-muted-foreground italic">
+            Model: {model_used}. Please consult your doctor for interpretation.
+            </p>
+        </CardContent>
+      </Card>
+     )
+  }
 
 
   return (
-    <Card className={cn("shadow-lg", getCardStyles())}>
+    <Card className={cn("shadow-lg", cardStyle)}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-xl">
-          {getRiskIcon()}
-          <span className={getRiskTitleColor()}>
-            AI Risk Assessment
-          </span>
+          <RiskIcon className={cn("h-6 w-6", titleColor)} />
+          <span className={titleColor}>AI Summary</span>
         </CardTitle>
-        <CardDescription className={cn(getRiskTitleColor(), "opacity-80")}>
-          {isLoading ? "Analyzing results..." : assessment?.overallRiskLevel ? `Overall Risk Level: ${assessment.overallRiskLevel}` : "Automated analysis based on provided data."}
+        <CardDescription className={cn(titleColor, "opacity-80")}>
+          {riskLevelText}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="flex items-center justify-center py-4">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-2 text-muted-foreground">Generating AI assessment...</span>
+        <div className="space-y-3">
+          <div>
+            <h4 className="font-semibold text-sm mb-1 text-foreground/90">Key Points:</h4>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">{summary}</p>
           </div>
-        ) : error ? (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertTitle>Assessment Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : assessment ? (
-          <div className="space-y-4">
+
+          {abnormal_results && abnormal_results.length > 0 && (
             <div>
-              <h4 className="font-semibold text-sm mb-1 text-foreground/90">Summary:</h4>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{assessment.riskSummary}</p>
+              <h4 className="font-semibold text-sm mb-1 text-foreground/90 flex items-center gap-1">
+                <ListChecks size={16} /> Flagged Results ({abnormal_count}/{total_tests}):
+              </h4>
+              <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground pl-2">
+                {abnormal_results.map((item, index) => (
+                  <li key={index} className="text-destructive/90">{item}</li>
+                ))}
+              </ul>
             </div>
-            {assessment.followUpSuggestions && assessment.followUpSuggestions.length > 0 && (
-              <div>
-                <h4 className="font-semibold text-sm mb-1 text-foreground/90">Follow-up Suggestions:</h4>
-                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                  {assessment.followUpSuggestions.map((suggestion, index) => (
-                    <li key={index}>{suggestion}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">No lab results provided or assessment could not be generated.</p>
-        )}
-        <p className="mt-4 text-xs text-muted-foreground italic">
-          This is an AI-generated summary and should not replace professional medical advice. Always consult with a healthcare professional for diagnosis and treatment.
+          )}
+           {abnormal_count === 0 && total_tests > 0 && (
+             <p className="text-sm text-green-700 dark:text-green-500">All {total_tests} analyzed tests appear within their normal reference ranges.</p>
+           )}
+
+        </div>
+        <p className="mt-4 text-xs text-muted-foreground">
+          AI Model: {model_used}.
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground italic">
+          This is an AI-generated summary for informational purposes. Always consult with a healthcare professional.
         </p>
       </CardContent>
     </Card>

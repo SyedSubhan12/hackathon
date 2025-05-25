@@ -1,53 +1,78 @@
+
 "use client";
 
+import { useEffect, useState }
+from 'react';
 import { useParams } from 'next/navigation';
-import useSWR from 'swr';
 import ReportHeader from '@/components/report/ReportHeader';
 import OCRTable from '@/components/report/OCRTable';
-import ExplanationAccordion from '@/components/report/ExplanationAccordion';
-import RiskSummaryCard from '@/components/report/RiskSummaryCard';
-import DownloadButton from '@/components/report/DownloadButton';
+import ExplanationSection from '@/components/report/ExplanationSection'; // Renamed for clarity
+import RiskSummaryDisplay from '@/components/report/RiskSummaryDisplay'; // Renamed for clarity
+// import DownloadButton from '@/components/report/DownloadButton'; // Temporarily commented out
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertTriangle, FileQuestion } from 'lucide-react';
+import { AlertTriangle, FileQuestion, Info } from 'lucide-react';
 import Image from 'next/image';
+import type { FullReportDataFromBackend, BackendLabResultItem, LabResultItem, AiAnalysis, ProcessingInfo } from '@/types/report';
 
-// Define a type for the lab result item, mirroring backend structure
-export interface LabResultItem {
-  test_name: string;
-  value: string;
-  unit: string;
-  reference_range: string;
-  // Add other potential fields if known, e.g., flag, notes
-  flag?: 'Normal' | 'Abnormal' | 'High' | 'Low' | string; 
-}
+// Helper function to map backend data to frontend LabResultItem
+const mapBackendResultsToFrontend = (backendResults: BackendLabResultItem[]): LabResultItem[] => {
+  if (!backendResults) return [];
+  return backendResults.map(item => {
+    let flag: LabResultItem['flag'] = 'Normal';
+    if (item.value < item.low) {
+      flag = 'Low';
+    } else if (item.value > item.high) {
+      flag = 'High';
+    }
+    // Consider if backend provides more specific flags like "Abnormal"
+    // For now, deriving based on low/high.
 
-// Define a type for the full report data
-export interface ReportData {
-  id: number;
-  filename: string;
-  processed_date: string;
-  raw_text?: string; // Assuming raw_text might be large and optional for main display
-  lab_results: LabResultItem[];
-  // Add other top-level fields from API if any
-}
-
-const fetcher = async (url: string): Promise<ReportData> => {
-  const res = await fetch(url);
-  if (!res.ok) {
-    const errorInfo = await res.json().catch(() => ({})); // Try to parse error, default to empty object
-    throw new Error(errorInfo.error || `An error occurred while fetching the data: ${res.statusText}`);
-  }
-  return res.json();
+    return {
+      test_name: item.test,
+      value: item.value.toString(), // OCRTable expects string
+      unit: item.unit,
+      reference_range: `${item.low} - ${item.high}`,
+      flag: flag,
+    };
+  });
 };
+
 
 export default function ReportPage() {
   const params = useParams();
-  const id = params.id as string;
+  const idFromUrl = params.id as string; // This is now mostly for a descriptive URL
 
-  // Use NEXT_PUBLIC_API_URL if defined, otherwise default to localhost for dev
-  const apiUrlBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
-  const { data: report, error, isLoading } = useSWR<ReportData>(id ? `${apiUrlBase}/reports/${id}` : null, fetcher);
+  const [reportData, setReportData] = useState<FullReportDataFromBackend | null>(null);
+  const [frontendLabResults, setFrontendLabResults] = useState<LabResultItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [processedDate, setProcessedDate] = useState<string>(new Date().toISOString()); // Fallback processed date
+
+  useEffect(() => {
+    const storedDataString = localStorage.getItem('labReportData');
+    if (storedDataString) {
+      try {
+        const data: FullReportDataFromBackend = JSON.parse(storedDataString);
+        if (data.filename && decodeURIComponent(idFromUrl) === data.filename) {
+          setReportData(data);
+          setFrontendLabResults(mapBackendResultsToFrontend(data.structured_data));
+          // Use current date as processedDate as backend doesn't provide it in this structure
+          setProcessedDate(new Date().toISOString()); 
+        } else {
+          setError("Report data in storage does not match the requested report or is invalid.");
+        }
+        // Clear the data from localStorage after loading it
+        // localStorage.removeItem('labReportData'); // Keep for refresh during dev, remove for prod
+      } catch (e) {
+        console.error("Error parsing report data from localStorage:", e);
+        setError("Failed to load report data from local storage. It might be corrupted.");
+      }
+    } else {
+      setError("No report data found. Please upload a report first.");
+    }
+    setIsLoading(false);
+  }, [idFromUrl]);
 
   if (isLoading) {
     return <ReportPageSkeleton />;
@@ -58,48 +83,80 @@ export default function ReportPage() {
       <Alert variant="destructive" className="max-w-2xl mx-auto">
         <AlertTriangle className="h-4 w-4" />
         <AlertTitle>Error Loading Report</AlertTitle>
-        <AlertDescription>
-          Could not load report data: {error.message}. Please try again later or contact support.
-        </AlertDescription>
+        <AlertDescription>{error}</AlertDescription>
       </Alert>
     );
   }
 
-  if (!report) {
+  if (!reportData) {
     return (
        <Alert className="max-w-2xl mx-auto bg-card">
         <FileQuestion className="h-4 w-4" />
         <AlertTitle>Report Not Found</AlertTitle>
         <AlertDescription>
-          The requested report could not be found. It might have been moved or deleted.
+          The report data could not be loaded. Please try uploading the report again.
         </AlertDescription>
       </Alert>
     );
   }
+  
+  // The Python backend doesn't assign a persistent ID in the response for this flow.
+  // We use a placeholder or derive one if needed for components like DownloadButton (which is currently disabled).
+  const displayReportId = reportData.processing_info?.extracted_text_length || Date.now();
+
 
   return (
     <div className="space-y-8">
-      <ReportHeader filename={report.filename} processedDate={report.processed_date} reportId={report.id}/>
+      <ReportHeader 
+        filename={reportData.filename} 
+        processedDate={processedDate} // Using client-generated date
+        reportId={displayReportId.toString()} // Using a derived/placeholder ID
+        processingInfo={reportData.processing_info}
+      />
       
-      {/* Optional: Report Preview could go here if implemented */}
-      {/* <ReportPreview reportUrl={`/api/reports/${report.id}/preview`} /> */}
        <div className="bg-card p-6 rounded-lg shadow-md">
-         <h2 className="text-2xl font-semibold text-primary mb-4">Extracted Data</h2>
-         <OCRTable labResults={report.lab_results} />
+         <h2 className="text-2xl font-semibold text-primary mb-4">Extracted Lab Results</h2>
+         {frontendLabResults.length > 0 ? (
+            <OCRTable labResults={frontendLabResults} />
+         ) : (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>No Structured Data</AlertTitle>
+              <AlertDescription>
+                No structured lab results were extracted from this report. The AI analysis below is based on the raw text.
+                {reportData.ai_analysis.error && ` (AI Error: ${reportData.ai_analysis.error})`}
+              </AlertDescription>
+            </Alert>
+         )}
        </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 bg-card p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-semibold text-primary mb-4">AI-Powered Explanation</h2>
-          <ExplanationAccordion labResultsData={report.lab_results} />
+          <h2 className="text-2xl font-semibold text-primary mb-4">AI-Powered Analysis</h2>
+          <ExplanationSection explanation={reportData.ai_analysis.explanation} />
         </div>
         <div className="lg:col-span-1 space-y-6">
-          <RiskSummaryCard labResultsData={report.lab_results} />
-          <DownloadButton reportId={report.id} filename={report.filename} />
+          <RiskSummaryDisplay aiAnalysisData={reportData.ai_analysis} />
+          {/* 
+          <DownloadButton 
+            reportId={displayReportId} // Needs a real, persistent ID if re-enabled
+            filename={reportData.filename} 
+          /> 
+          */}
         </div>
       </div>
+
+       {reportData.raw_text_preview && (
+        <div className="bg-card p-6 rounded-lg shadow-md mt-8">
+            <h3 className="text-xl font-semibold text-primary mb-3">Raw Text Preview</h3>
+            <pre className="whitespace-pre-wrap text-sm text-muted-foreground bg-muted/30 p-4 rounded-md max-h-60 overflow-y-auto">
+              {reportData.raw_text_preview}
+            </pre>
+        </div>
+       )}
+       
        <div className="bg-card p-6 rounded-lg shadow-md mt-8">
-          <h3 className="text-xl font-semibold text-primary mb-3">Original Report Snippet (Mock)</h3>
+          <h3 className="text-xl font-semibold text-primary mb-3">Original Report Snippet (Placeholder)</h3>
           <Image 
             src="https://placehold.co/800x600.png" 
             alt="Mockup of an original lab report"
@@ -108,7 +165,7 @@ export default function ReportPage() {
             className="rounded-md border border-border"
             data-ai-hint="document medical"
           />
-          <p className="text-xs text-muted-foreground mt-2">This is a placeholder image representing the original uploaded document.</p>
+          <p className="text-xs text-muted-foreground mt-2">This is a placeholder image representing the original uploaded document. A future feature could show the actual document.</p>
         </div>
     </div>
   );
@@ -119,7 +176,7 @@ function ReportPageSkeleton() {
     <div className="space-y-8 animate-pulse">
       <div className="flex justify-between items-center">
         <Skeleton className="h-8 w-3/5" />
-        <Skeleton className="h-10 w-32" />
+        {/* <Skeleton className="h-10 w-32" /> */}
       </div>
       
       <div className="bg-card p-6 rounded-lg shadow-md">
@@ -150,9 +207,10 @@ function ReportPageSkeleton() {
             <Skeleton className="h-4 w-full mb-2" />
             <Skeleton className="h-4 w-5/6" />
           </div>
-          <Skeleton className="h-12 w-full rounded-md" />
+          {/* <Skeleton className="h-12 w-full rounded-md" /> */}
         </div>
       </div>
     </div>
   );
 }
+

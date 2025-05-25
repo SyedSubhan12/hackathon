@@ -1,3 +1,4 @@
+// src/components/landing/UploadDropzone.tsx
 "use client";
 
 import { useState, useCallback, ChangeEvent } from 'react';
@@ -7,16 +8,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { UploadCloud, FileText, Image as ImageIcon, XCircle, Loader2 } from 'lucide-react';
-import { uploadReportAction } from '@/app/actions/reportActions'; // Will create this action
+import { uploadReportAction } from '@/app/actions/reportActions';
+import type { FullReportDataFromBackend } from '@/types/report';
 
 const ALLOWED_EXTENSIONS = ["pdf", "png", "jpg", "jpeg", "tiff", "bmp"];
-const MAX_FILE_SIZE_MB = 25;
+const MAX_FILE_SIZE_MB = 15; // Python backend has 16MB limit, give some buffer
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 export default function UploadDropzone() {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0); // Keep for visual feedback
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -79,49 +81,52 @@ export default function UploadDropzone() {
     }
 
     setIsLoading(true);
-    setUploadProgress(0); // Reset progress for new upload
+    setUploadProgress(0); 
+    setError(null);
 
     const formData = new FormData();
     formData.append('file', file);
 
-    try {
-      // Simulate progress for demo purposes if backend doesn't provide it via server action
-      // For real progress, server action would need to stream updates or use a library
-      let currentProgress = 0;
-      const progressInterval = setInterval(() => {
-        currentProgress += 10;
-        if (currentProgress <= 90) { // Stop at 90%, final 10% after server response
-          setUploadProgress(currentProgress);
-        } else {
-          clearInterval(progressInterval);
-        }
-      }, 200);
-      
-      const result = await uploadReportAction(formData);
-      clearInterval(progressInterval); // Clear interval once action completes
+    // Simulate progress
+    let currentProgress = 0;
+    const progressInterval = setInterval(() => {
+      currentProgress += 10;
+      if (currentProgress <= 90) {
+        setUploadProgress(currentProgress);
+      } else {
+        clearInterval(progressInterval);
+      }
+    }, 200);
 
-      if (result.error) {
-        setError(result.error);
+    try {
+      const result = await uploadReportAction(formData);
+      clearInterval(progressInterval);
+
+      if (result.success && result.data) {
+        setUploadProgress(100);
         toast({
-          title: "Upload Failed",
-          description: result.error,
+          title: "Processing Successful",
+          description: `${result.data.filename} has been processed.`,
+        });
+        // Store data in localStorage to pass to the report page
+        localStorage.setItem('labReportData', JSON.stringify(result.data));
+        // Navigate to a generic report display page. The filename can make the URL descriptive.
+        router.push(`/report/${encodeURIComponent(result.data.filename)}`);
+      } else {
+        setError(result.error || "An unknown error occurred during processing.");
+        toast({
+          title: "Processing Failed",
+          description: result.error || "Could not process the report.",
           variant: "destructive",
         });
         setUploadProgress(0);
-      } else if (result.report_id) {
-        setUploadProgress(100);
-        toast({
-          title: "Upload Successful",
-          description: `${file.name} has been uploaded.`,
-        });
-        router.push(`/report/${result.report_id}`);
       }
     } catch (err) {
       clearInterval(progressInterval);
       const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred.";
       setError(errorMessage);
       toast({
-        title: "Upload Error",
+        title: "Processing Error",
         description: errorMessage,
         variant: "destructive",
       });
@@ -130,7 +135,7 @@ export default function UploadDropzone() {
       setIsLoading(false);
     }
   };
-
+  
   const getFileIcon = () => {
     if (!file) return <UploadCloud size={48} className="text-gray-400" />;
     const extension = file.name.split('.').pop()?.toLowerCase();
@@ -160,7 +165,7 @@ export default function UploadDropzone() {
         {!file && (
           <div className="text-center pointer-events-none">
             <UploadCloud size={48} className={`mx-auto mb-3 ${isDragging ? 'text-primary' : 'text-muted-foreground'}`} />
-            <p className="mb-2 text-sm font-semibold ${isDragging ? 'text-primary' : 'text-foreground'}">
+            <p className={`mb-2 text-sm font-semibold ${isDragging ? 'text-primary' : 'text-foreground'}`}>
               Drag & drop files here or <span className="text-accent">click to browse</span>
             </p>
             <p className="text-xs text-muted-foreground">
@@ -187,20 +192,27 @@ export default function UploadDropzone() {
          {isLoading && (
           <div className="text-center p-4">
             <Loader2 size={48} className="mx-auto mb-3 text-primary animate-spin" />
-            <p className="text-sm font-medium text-primary">Uploading {file?.name}...</p>
-            <p className="text-xs text-muted-foreground">Please wait.</p>
+            <p className="text-sm font-medium text-primary">Processing {file?.name}...</p>
+            <p className="text-xs text-muted-foreground">This may take a moment.</p>
           </div>
         )}
       </div>
 
       {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
-      {uploadProgress > 0 && (
+      {uploadProgress > 0 && !isLoading && uploadProgress < 100 && ( // Show progress only during active upload if needed, or rely on isLoading
         <div className="space-y-1">
           <Progress value={uploadProgress} className="w-full h-2" />
-          <p className="text-xs text-muted-foreground text-center">{uploadProgress}% uploaded</p>
+          <p className="text-xs text-muted-foreground text-center">{uploadProgress}% processed</p>
         </div>
       )}
+      {uploadProgress === 100 && !isLoading && (
+         <div className="space-y-1">
+          <Progress value={100} className="w-full h-2" />
+          <p className="text-xs text-muted-foreground text-center">Processing complete.</p>
+        </div>
+      )}
+
 
       <Button
         onClick={handleSubmit}
@@ -209,7 +221,7 @@ export default function UploadDropzone() {
       >
         {isLoading ? (
           <>
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing Report...
           </>
         ) : (
           <>
