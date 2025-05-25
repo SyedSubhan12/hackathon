@@ -1,10 +1,10 @@
 // src/app/actions/reportActions.ts
 "use server";
 
-import type { FullReportDataFromBackend } from '@/types/report'; // We'll create this type definition
+import type { FullReportDataFromBackend } from '@/types/report';
 
-// Ensure this URL points to your Python Flask backend's upload_pdf endpoint
-const PYTHON_BACKEND_UPLOAD_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:5000/upload_pdf";
+// Ensure this URL points to your Python Flask backend
+const PYTHON_BACKEND_BASE_URL = process.env.PYTHON_BACKEND_URL || "http://localhost:5000";
 
 interface UploadActionResult {
   success: boolean;
@@ -12,9 +12,24 @@ interface UploadActionResult {
   error?: string;
 }
 
-export async function uploadReportAction(formData: FormData): Promise<UploadActionResult> {
+export async function uploadReportAction(
+  fileOrFilename: File | string,
+  isSample: boolean
+): Promise<UploadActionResult> {
+  const formData = new FormData();
+  let endpoint = `${PYTHON_BACKEND_BASE_URL}/upload_pdf`;
+
+  if (isSample && typeof fileOrFilename === 'string') {
+    formData.append('selected_file', fileOrFilename);
+  } else if (fileOrFilename instanceof File) {
+    formData.append('file', fileOrFilename);
+  } else {
+    console.error("Invalid input to uploadReportAction: fileOrFilename is not a File or string.", fileOrFilename);
+    return { success: false, error: "Invalid input for upload." };
+  }
+
   try {
-    const response = await fetch(PYTHON_BACKEND_UPLOAD_URL, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       body: formData,
       // Do not set Content-Type header manually when using FormData with fetch,
@@ -26,7 +41,6 @@ export async function uploadReportAction(formData: FormData): Promise<UploadActi
       try {
         errorBody = await response.json();
       } catch (e) {
-        // If response is not JSON, use status text
         return { success: false, error: `API Error: ${response.status} ${response.statusText}` };
       }
       return { success: false, error: errorBody.error || `API Error: ${response.status}` };
@@ -34,9 +48,11 @@ export async function uploadReportAction(formData: FormData): Promise<UploadActi
 
     const result = await response.json();
 
-    if (result.success && result.filename) { // Python backend returns a 'success' boolean
+    // Assuming the Python backend returns 'success: true' directly in its main response object
+    if (result.success && result.filename) {
       return { success: true, data: result as FullReportDataFromBackend };
     } else {
+      // If backend sends success:false or result.error, use that
       return { success: false, error: result.error || "Upload processed, but unexpected data returned from backend." };
     }
 
@@ -46,5 +62,45 @@ export async function uploadReportAction(formData: FormData): Promise<UploadActi
       return { success: false, error: error.message };
     }
     return { success: false, error: "An unexpected error occurred during upload." };
+  }
+}
+
+// New action to fetch sample files
+interface SampleFile {
+  filename: string;
+  size: number;
+  extension: string;
+}
+
+interface FetchSamplesResult {
+  success: boolean;
+  data?: SampleFile[];
+  error?: string;
+}
+
+export async function fetchSampleFilesAction(): Promise<FetchSamplesResult> {
+  try {
+    const response = await fetch(`${PYTHON_BACKEND_BASE_URL}/sample_files`);
+    if (!response.ok) {
+      let errorBody;
+      try {
+        errorBody = await response.json();
+      } catch (e) {
+        return { success: false, error: `API Error: ${response.status} ${response.statusText}` };
+      }
+      return { success: false, error: errorBody.error || `API Error fetching samples: ${response.status}` };
+    }
+    const result = await response.json();
+    if (result.sample_files) {
+      return { success: true, data: result.sample_files as SampleFile[] };
+    } else {
+      return { success: false, error: result.error || "No sample files found or unexpected format."};
+    }
+  } catch (error) {
+    console.error('Fetch sample files error:', error);
+    if (error instanceof Error) {
+      return { success: false, error: error.message };
+    }
+    return { success: false, error: "An unexpected error occurred while fetching sample files." };
   }
 }
